@@ -1,0 +1,7 @@
+Options -Indexes
+<Directory "/home/dxingpl/public_html/subdomains/sp5uaf.dxing.pl/plog/env">
+Require all denied
+</Directory>
+<Directory "/home/dxingpl/public_html/subdomains/sp5uaf.dxing.pl/pl2/env">
+Require all denied
+</Directory>

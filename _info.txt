@@ -1,0 +1,19 @@
+The ADIF upload and QSO Search utilities were created to keep track of my 2026 vacation activities from WWFF, POTA and SOTA areas.
+I created the first version as my personal self-education in AI programming.
+After the first weeks of using I decided to implement new features - still as a way of learning AI tools.
+Finally I decided to keep logs from all of my portable operations in the system and to implement new features and ideas.
+Tom SP5UAF
+====================================================================================
+VERSIONS/CHANGES
+
+00.01 20260905 The first working version
+00.02 20261007 Adding search filters (mode, band, date, SPFF, POTA)
+00.03 20261007 Adding uploads registering and additional comments to uploads, new table created to keep track of uploads
+00.04 20261008 Adding feature to delete uploads (and related QSOs)
+00.05 20261008 Adding "my_pga"ref" field to qso_log table and the code to find PGA reference in the <QSLMSG> field of ADIF file to feed the new field
+00.06 20261008 CHanged code to read the MAX_FILE_SIZE and display the value in "Tips" of the upload page instead of a static text
+00.07 20261008 Added RIG and ANT info to upload page and loding it to my_rig and my_antenna fiels of the qso_log table
+			   Added statisctics from the log
+			   Added version display
+			   Added a button to display last 20 QSOs
+			   Some small changes of the layout

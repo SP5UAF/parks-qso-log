@@ -1,0 +1,12 @@
+RewriteEngine on
+
+RewriteOptions inherit
+
+#Wersja PHP zmieniona: 2026-09-01 17:16:25
+AddHandler application/x-httpd-php85 php
+RewriteCond %{HTTPS} off
+RewriteCond %{HTTP:X-Forwarded-SSL} !on
+RewriteCond %{HTTP_HOST} ^sp5uaf\.dxing\.pl$ [OR]
+RewriteCond %{HTTP_HOST} ^www\.sp5uaf\.dxing\.pl$
+RewriteRule ^(.*)$ "https\:\/\/sp5uaf\.dxing\.pl\/$1" [R=301,L]
+
