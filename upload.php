@@ -410,6 +410,7 @@ if (isLoggedIn()) {
         <span>Logged in as: <strong><?= htmlspecialchars($_SESSION['callsign']) ?></strong></span>
         <span>
             <a href="index.php" class="btn btn-primary btn-sm">🔍 &nbsp;Search log</a>
+            <a href="manage.php" class="btn btn-primary btn-sm">🛠️ &nbsp;Manage QSOs</a>
             <a href="upload.php?logout=1" class="btn btn-danger btn-sm">⏻ &nbsp;Logout</a>
         </span>
     </div>

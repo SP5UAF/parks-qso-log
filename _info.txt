@@ -20,3 +20,7 @@ VERSIONS/CHANGES
 00.08 20261009 Some layout changes (wider section, addidng voivodeship and park callsign)
 			   Making SOTA column optional for display in results
 			   Adding GRID column to the results
+00.09 20261009 Some layout changes 
+00.10 20261009 Some layout changes 
+00.11 20261009 Some layout changes 
+00.12 20261009 Adding record maintenance (edit, delete) for the system owner
