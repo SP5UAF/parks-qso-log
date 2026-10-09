@@ -101,6 +101,7 @@ if (isLoggedIn() && $_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['del_
 
 // ---------- Edit single QSO ----------
 $editRow = null;
+$results = []; $searched = false; $searchErr = null;
 $editable = ['station_call','band','freq','qso_date','time_on','rst_sent','rst_rcvd','station_callsign','my_wwff_ref','my_pota_ref','my_gridsquare','my_voivodeship_ref','my_pga_ref'];
 if (isLoggedIn() && isset($_GET['edit_id'])) {
     $eid = (int)$_GET['edit_id'];
@@ -136,9 +137,16 @@ if (isLoggedIn() && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_
                     $types = str_repeat('s', count($v)) . 'i';
                     $params = array_values($v); $params[] = $eid;
                     $stmt->bind_param($types, ...$params);
-                    $stmt->execute(); $stmt->close(); $db->close();
+                    $stmt->execute(); $stmt->close();
+                    // Reload the saved row so it can be shown as a single-record result below
+                    $pgaS = $hasPga ? ', my_pga_ref' : ''; $voivS = $hasVoiv ? ', my_voivodeship_ref' : '';
+                    $rs = $db->prepare("SELECT id, upload_id, station_call, band, freq, qso_date, time_on, rst_sent, rst_rcvd, station_callsign, my_wwff_ref, my_pota_ref, my_gridsquare$pgaS$voivS FROM qso_log WHERE id = ?");
+                    $rs->bind_param('i', $eid); $rs->execute();
+                    $savedRow = $rs->get_result()->fetch_assoc(); $rs->close();
+                    $db->close();
                     $msg = "Record #$eid updated.";
                     $editRow = null;
+                    if ($savedRow) { $results = [$savedRow]; $searched = true; }
                 } catch (Throwable $e) { $err = 'Update failed: ' . $e->getMessage(); }
             }
             if ($err) { try { $db = mdb(); $s = $db->prepare('SELECT * FROM qso_log WHERE id = ?'); $s->bind_param('i', $eid); $s->execute(); $editRow = $s->get_result()->fetch_assoc(); $s->close(); $db->close(); } catch (Throwable $e) {} }
@@ -150,7 +158,6 @@ if (isLoggedIn() && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_
 $f = ['call' => strtoupper(trim($_GET['call'] ?? '')), 'dfrom' => trim($_GET['dfrom'] ?? ''),
     'dto' => trim($_GET['dto'] ?? ''), 'spff' => strtoupper(trim($_GET['spff'] ?? '')),
     'pota' => strtoupper(trim($_GET['pota'] ?? '')), 'grid' => strtoupper(trim($_GET['grid'] ?? ''))];
-$results = []; $searched = false; $searchErr = null;
 if (isLoggedIn() && isset($_GET['s'])) {
     if ($f['dfrom'] !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $f['dfrom'])) $searchErr = "Bad 'Date from'.";
     elseif ($f['dto'] !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $f['dto'])) $searchErr = "Bad 'Date to'.";
@@ -267,20 +274,6 @@ foreach ($labels as $col => $lab) {
 </div></form></div>
 <?php endif; ?>
 
-<div class="card"><h2>🔍 Find records</h2>
-<form method="GET" action="manage.php" autocomplete="off">
-<input type="hidden" name="s" value="1">
-<div class="filter-grid">
-<div class="form-group"><label>Callsign</label><input type="text" name="call" maxlength="20" value="<?= htmlspecialchars($f['call'], ENT_QUOTES, 'UTF-8') ?>"></div>
-<div class="form-group"><label>Date from</label><input type="date" name="dfrom" value="<?= htmlspecialchars($f['dfrom'], ENT_QUOTES, 'UTF-8') ?>"></div>
-<div class="form-group"><label>Date to</label><input type="date" name="dto" value="<?= htmlspecialchars($f['dto'], ENT_QUOTES, 'UTF-8') ?>"></div>
-<div class="form-group"><label>SPFF / WWFF</label><input type="text" name="spff" maxlength="20" value="<?= htmlspecialchars($f['spff'], ENT_QUOTES, 'UTF-8') ?>"></div>
-<div class="form-group"><label>POTA</label><input type="text" name="pota" maxlength="20" value="<?= htmlspecialchars($f['pota'], ENT_QUOTES, 'UTF-8') ?>"></div>
-<div class="form-group"><label>GRID</label><input type="text" name="grid" maxlength="10" value="<?= htmlspecialchars($f['grid'], ENT_QUOTES, 'UTF-8') ?>"></div>
-</div>
-<button type="submit" class="btn btn-primary" style="margin-top:14px">🔍 &nbsp;Search</button>
-</form></div>
-
 <?php if ($searched): ?>
 <div class="card"><h2>📋 <?= count($results) ?> record(s)</h2>
 <div class="table-wrapper"><table><thead><tr>
@@ -304,17 +297,31 @@ foreach ($labels as $col => $lab) {
 <?php if ($hasVoiv): ?><td><?= htmlspecialchars($r['my_voivodeship_ref'] ?? '', ENT_QUOTES, 'UTF-8') ?></td><?php endif; ?>
 <?php if ($hasPga): ?><td><?= htmlspecialchars($r['my_pga_ref'] ?? '', ENT_QUOTES, 'UTF-8') ?></td><?php endif; ?>
 <td style="white-space:nowrap">
-<a href="manage.php?edit_id=<?= (int)$r['id'] ?>" class="btn btn-primary btn-sm">✏️ Edit</a>
+<a href="manage.php?edit_id=<?= (int)$r['id'] ?>" title="Edit record #<?= (int)$r['id'] ?>" class="btn btn-primary btn-sm">✏️</a>
 <form method="POST" style="display:inline" onsubmit="return confirm('Delete record #<?= (int)$r['id'] ?>?');">
 <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf'], ENT_QUOTES, 'UTF-8') ?>">
 <input type="hidden" name="del_id" value="<?= (int)$r['id'] ?>">
-<button type="submit" class="btn btn-danger btn-sm">🗑 Delete</button>
+<button type="submit" title="Delete record #<?= (int)$r['id'] ?>" class="btn btn-danger btn-sm">🗑</button>
 </form></td>
 </tr>
 <?php endforeach; ?>
 <?php if (!count($results)): ?><tr><td colspan="20" style="text-align:center;color:#8b949e">No records found.</td></tr><?php endif; ?>
 </tbody></table></div></div>
 <?php endif; ?>
+
+<div class="card"><h2>🔍 Find records</h2>
+<form method="GET" action="manage.php" autocomplete="off">
+<input type="hidden" name="s" value="1">
+<div class="filter-grid">
+<div class="form-group"><label>Callsign</label><input type="text" name="call" maxlength="20" value="<?= htmlspecialchars($f['call'], ENT_QUOTES, 'UTF-8') ?>"></div>
+<div class="form-group"><label>Date from</label><input type="date" name="dfrom" value="<?= htmlspecialchars($f['dfrom'], ENT_QUOTES, 'UTF-8') ?>"></div>
+<div class="form-group"><label>Date to</label><input type="date" name="dto" value="<?= htmlspecialchars($f['dto'], ENT_QUOTES, 'UTF-8') ?>"></div>
+<div class="form-group"><label>SPFF / WWFF</label><input type="text" name="spff" maxlength="20" value="<?= htmlspecialchars($f['spff'], ENT_QUOTES, 'UTF-8') ?>"></div>
+<div class="form-group"><label>POTA</label><input type="text" name="pota" maxlength="20" value="<?= htmlspecialchars($f['pota'], ENT_QUOTES, 'UTF-8') ?>"></div>
+<div class="form-group"><label>GRID</label><input type="text" name="grid" maxlength="10" value="<?= htmlspecialchars($f['grid'], ENT_QUOTES, 'UTF-8') ?>"></div>
+</div>
+<button type="submit" class="btn btn-primary" style="margin-top:14px">🔍 &nbsp;Search</button>
+</form></div>
 
 </div>
 <?php endif; ?>

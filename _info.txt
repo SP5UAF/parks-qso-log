@@ -24,3 +24,4 @@ VERSIONS/CHANGES
 00.10 20261009 Some layout changes 
 00.11 20261009 Some layout changes 
 00.12 20261009 Adding record maintenance (edit, delete) for the system owner
+00.13 20261009 QSO Edit page changes
