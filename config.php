@@ -33,7 +33,7 @@ define('MY_PASS_HASH',  env('MY_PASS_HASH'));
 // ============================================================
 // System Version (shown in upload.php Tips)
 // ============================================================
-define('SYSTEM_VERSION', '00.08 20261008');
+define('SYSTEM_VERSION', '00.11 20261009');
 
 if (DB_USER === '' || DB_NAME === '' || MY_PASS_HASH === '') {
     http_response_code(500);

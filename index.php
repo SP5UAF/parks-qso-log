@@ -57,6 +57,7 @@ $filterDateTo   = '';
 $filterWWFF  = '';
 $filterPOTA  = '';
 $filterPGA   = '';
+$showSota    = !empty($_GET['show_sota']) || !empty($_POST['show_sota']);
 $results     = [];
 $searchDone  = false;
 $searchError = null;
@@ -69,6 +70,7 @@ $sotaCount = 0;
 $modeOptions = [];
 $bandOptions = [];
 $hasPgaCol = false; // my_pga_ref exists only after migration_pga.sql
+$hasVoivCol = false; // my_voivodeship_ref exists only after migration_voivodeship.sql
 
 // Distinct mode/band for dropdowns + PGA column detection
 try {
@@ -79,6 +81,8 @@ try {
     }
     $colCheck = $dbOpt->query("SHOW COLUMNS FROM qso_log LIKE 'my_pga_ref'");
     if ($colCheck) { $hasPgaCol = $colCheck->num_rows > 0; $colCheck->free(); }
+    $colCheckV = $dbOpt->query("SHOW COLUMNS FROM qso_log LIKE 'my_voivodeship_ref'");
+    if ($colCheckV) { $hasVoivCol = $colCheckV->num_rows > 0; $colCheckV->free(); }
     $dbOpt->close();
 } catch (Throwable $e) { /* dropdowns stay empty */ }
 
@@ -93,6 +97,7 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['search']))
     $filterWWFF = strtoupper(trim($_POST['wwff'] ?? $_GET['wwff'] ?? ''));
     $filterPOTA = strtoupper(trim($_POST['pota'] ?? $_GET['pota'] ?? ''));
     $filterPGA = strtoupper(trim($_POST['pga'] ?? $_GET['pga'] ?? ''));
+    $showSota = !empty($_POST['show_sota']) || !empty($_GET['show_sota']);
 
     if (empty($searchCall)) {
         $searchError = "Please enter a callsign to search.";
@@ -114,6 +119,7 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['search']))
     if ($searchError === null && $searchCall !== '' && isset($db)) {
 
         $pgaSelect = $hasPgaCol ? ', my_pga_ref' : '';
+        $voivSelect = $hasVoivCol ? ', my_voivodeship_ref' : '';
 
         $where = ['station_call = ?'];
         $params = [$searchCall];
@@ -128,13 +134,15 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['search']))
 
         $sql = "SELECT
                     station_call,
+                    station_callsign,
                     qso_date,
                     time_on,
                     band,
                     mode,
                     my_wwff_ref,
                     my_pota_ref,
-                    my_sota_ref" . $pgaSelect . "
+                    my_sota_ref,
+                    my_gridsquare" . $pgaSelect . $voivSelect . "
                 FROM qso_log
                 WHERE " . implode(' AND ', $where) . "
                 ORDER BY qso_date DESC, time_on DESC
@@ -193,8 +201,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['latest'])) {
     try {
         $dbL = getDB();
         $pgaSelect = $hasPgaCol ? ', my_pga_ref' : '';
-        $sql = "SELECT station_call, qso_date, time_on, band, mode,
-                    my_wwff_ref, my_pota_ref, my_sota_ref" . $pgaSelect . "
+        $voivSelect = $hasVoivCol ? ', my_voivodeship_ref' : '';
+        $sql = "SELECT station_call, station_callsign, qso_date, time_on, band, mode,
+                    my_wwff_ref, my_pota_ref, my_sota_ref, my_gridsquare" . $pgaSelect . $voivSelect . "
                 FROM qso_log ORDER BY qso_date DESC, time_on DESC LIMIT 20";
         $res = $dbL->query($sql);
         if ($res) {
@@ -477,11 +486,11 @@ tbody tr:hover {
                 <button type="submit" class="btn btn-primary">
                     🔍 &nbsp;Search
                 </button>
-                <a href="index.php?latest=1" class="btn btn-primary" style="background:#21262d;color:#f0a500;border:1px solid #30363d">
+                <a href="index.php?latest=1" onclick="var c=document.getElementById('show_sota');if(c&&c.checked)this.href='index.php?latest=1&show_sota=1';" class="btn btn-primary" style="background:#21262d;color:#f0a500;border:1px solid #30363d">
                     🕘 &nbsp;Last 20 QSOs
                 </a>
                 <button type="button" class="btn btn-primary" style="background:#21262d;color:#8b949e;border:1px solid #30363d"
-                    onclick="['mode','band','date_from','date_to','wwff','pota','pga'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});">
+                    onclick="['mode','band','date_from','date_to','wwff','pota','pga'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});var sc=document.getElementById('show_sota');if(sc)sc.checked=false;">
                     🧹 &nbsp;Clear form
                 </button>
             </div>
@@ -544,6 +553,13 @@ tbody tr:hover {
                         value="<?= htmlspecialchars($filterPGA, ENT_QUOTES, 'UTF-8') ?>">
                 </div>
                 </div>
+                <div class="form-group" style="margin-top:4px">
+                    <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:normal;font-size:0.9em;cursor:pointer">
+                        <input type="checkbox" id="show_sota" name="show_sota" value="1"
+                            <?= $showSota ? 'checked' : '' ?> style="width:auto;accent-color:#f0a500">
+                        Show SOTA in Results
+                    </label>
+                </div>
             </div>
         </form>
     </div>
@@ -578,16 +594,23 @@ tbody tr:hover {
                     <table>
                         <thead>
                             <tr>
-                                <th>Worked Call</th>
+                                <th>CALL</th>
                                 <th>Date</th>
                                 <th>Band</th>
                                 <th>Mode</th>
                                 <th>WWFF</th>
                                 <th>POTA</th>
+                                <?php if (!empty($showSota)): ?>
                                 <th>SOTA</th>
+                                <?php endif; ?>
+                                <?php if (!empty($hasVoivCol)): ?>
+                                <th>V</th>
+                                <?php endif; ?>
                                 <?php if (!empty($hasPgaCol)): ?>
                                 <th>PGA</th>
                                 <?php endif; ?>
+                                <th>GRID</th>
+                                <th>PARK CALL</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -663,6 +686,7 @@ tbody tr:hover {
     <?php endif; ?>
 </td>
 
+                                    <?php if (!empty($showSota)): ?>
                                     <!-- SOTA -->
                                     <td>
                                         <?php
@@ -675,6 +699,16 @@ tbody tr:hover {
                                             <span class="empty-cell">-</span>
                                         <?php endif; ?>
                                     </td>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($hasVoivCol)): ?>
+                                    <!-- Voivodeship -->
+                                    <td>
+                                        <?= !empty(trim($row['my_voivodeship_ref'] ?? ''))
+                                            ? htmlspecialchars(trim($row['my_voivodeship_ref']), ENT_QUOTES, 'UTF-8')
+                                            : '<span class="empty-cell">-</span>' ?>
+                                    </td>
+                                    <?php endif; ?>
 
                                     <?php if (!empty($hasPgaCol)): ?>
                                     <!-- PGA -->
@@ -690,6 +724,20 @@ tbody tr:hover {
                                         <?php endif; ?>
                                     </td>
                                     <?php endif; ?>
+
+                                    <!-- GRID (my_gridsquare) -->
+                                    <td>
+                                        <?= !empty(trim($row['my_gridsquare'] ?? ''))
+                                            ? htmlspecialchars(trim($row['my_gridsquare']), ENT_QUOTES, 'UTF-8')
+                                            : '<span class="empty-cell">-</span>' ?>
+                                    </td>
+
+                                    <!-- PARK CALL (station_callsign used during activation) -->
+                                    <td>
+                                        <?= !empty(trim($row['station_callsign'] ?? ''))
+                                            ? '<strong>' . htmlspecialchars(trim($row['station_callsign']), ENT_QUOTES, 'UTF-8') . '</strong>'
+                                            : '<span class="empty-cell">-</span>' ?>
+                                    </td>
 
                                 </tr>
                             <?php endforeach; ?>
@@ -724,12 +772,14 @@ tbody tr:hover {
                         <div class="summary-label">POTA References Worked</div>
                     </div>
 
+                    <?php if (!empty($showSota)): ?>
                     <div class="summary-box">
                         <div class="summary-number" style="color:#f0a500">
                             <?= $sotaCount ?>
                         </div>
                         <div class="summary-label">SOTA References Worked</div>
                     </div>
+                    <?php endif; ?>
 
                 </div>
             </div>

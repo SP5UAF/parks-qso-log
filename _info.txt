@@ -17,3 +17,6 @@ VERSIONS/CHANGES
 			   Added version display
 			   Added a button to display last 20 QSOs
 			   Some small changes of the layout
+00.08 20261009 Some layout changes (wider section, addidng voivodeship and park callsign)
+			   Making SOTA column optional for display in results
+			   Adding GRID column to the results
