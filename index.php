@@ -594,7 +594,9 @@ tbody tr:hover {
                     <table>
                         <thead>
                             <tr>
+                                <?php if (!empty($isLatest)): ?>
                                 <th>CALL</th>
+                                <?php endif; ?>
                                 <th>Date</th>
                                 <th>Band</th>
                                 <th>Mode</th>
@@ -616,11 +618,9 @@ tbody tr:hover {
                         <tbody>
                             <?php foreach ($results as $row): ?>
                                 <tr>
-                                    <td>
-                                        <strong>
-                                            <?= htmlspecialchars($row['station_call'] ?? '', ENT_QUOTES, 'UTF-8') ?>
-                                        </strong>
-                                    </td>
+                                    <?php if (!empty($isLatest)): ?>
+                                    <td><strong><?= htmlspecialchars($row['station_call'] ?? '', ENT_QUOTES, 'UTF-8') ?></strong></td>
+                                    <?php endif; ?>
                                     <td>
                                         <?php
                                         $d = $row['qso_date'] ?? '';
@@ -838,6 +838,8 @@ tbody tr:hover {
             </div>
         </div>
     <?php endif; ?>
+
+    <p style="text-align:center;color:#8b949e;font-size:0.8em;margin:18px 0 6px">System version: <strong><?= htmlspecialchars(defined('SYSTEM_VERSION') ? SYSTEM_VERSION : '', ENT_QUOTES, 'UTF-8') ?></strong></p>
 
 </div><!-- /.container -->
 
