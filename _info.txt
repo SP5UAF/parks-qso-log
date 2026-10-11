@@ -26,3 +26,5 @@ VERSIONS/CHANGES
 00.12 20261009 Adding record maintenance (edit, delete) for the system owner
 00.13 20261009 QSO Edit page changes
 00.14 20261009 Layout changes
+00.15 20261009 Layout changes
+00.16 20261011 Added logic to search for exact entered callsign or all combinations with the eneterd callsign

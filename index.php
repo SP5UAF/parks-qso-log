@@ -58,6 +58,7 @@ $filterWWFF  = '';
 $filterPOTA  = '';
 $filterPGA   = '';
 $showSota    = !empty($_GET['show_sota']) || !empty($_POST['show_sota']);
+$fuzzyCall   = !empty($_GET['fuzzy']) || !empty($_POST['fuzzy']);
 $results     = [];
 $searchDone  = false;
 $searchError = null;
@@ -98,6 +99,7 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['search']))
     $filterPOTA = strtoupper(trim($_POST['pota'] ?? $_GET['pota'] ?? ''));
     $filterPGA = strtoupper(trim($_POST['pga'] ?? $_GET['pga'] ?? ''));
     $showSota = !empty($_POST['show_sota']) || !empty($_GET['show_sota']);
+    $fuzzyCall = !empty($_POST['fuzzy']) || !empty($_GET['fuzzy']);
 
     if (empty($searchCall)) {
         $searchError = "Please enter a callsign to search.";
@@ -121,9 +123,25 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['search']))
         $pgaSelect = $hasPgaCol ? ', my_pga_ref' : '';
         $voivSelect = $hasVoivCol ? ', my_voivodeship_ref' : '';
 
-        $where = ['station_call = ?'];
-        $params = [$searchCall];
-        $types = 's';
+        // Exact (default): station_call = ?. Fuzzy: base call as a /-separated
+        // component: = base, base/%, %/base, %/base/% (covers SP5DU/P, OM/SP5DU/P...).
+        // If the entered call itself contains '/', fall back to substring LIKE.
+        $where = [];
+        $params = [];
+        $types = '';
+        if (!empty($fuzzyCall) && strpos($searchCall, '/') === false) {
+            $where[] = '(station_call = ? OR station_call LIKE ? OR station_call LIKE ? OR station_call LIKE ?)';
+            $params = [$searchCall, $searchCall . '/%', '%/' . $searchCall, '%/' . $searchCall . '/%'];
+            $types = 'ssss';
+        } elseif (!empty($fuzzyCall)) {
+            $where[] = 'station_call LIKE ?';
+            $params = ['%' . $searchCall . '%'];
+            $types = 's';
+        } else {
+            $where[] = 'station_call = ?';
+            $params = [$searchCall];
+            $types = 's';
+        }
         if ($filterMode !== '')     { $where[] = 'mode = ?';          $params[] = $filterMode; $types .= 's'; }
         if ($filterBand !== '')     { $where[] = 'band = ?';          $params[] = $filterBand; $types .= 's'; }
         if ($filterDateFrom !== '') { $where[] = 'qso_date >= ?';     $params[] = $filterDateFrom; $types .= 's'; }
@@ -490,9 +508,16 @@ tbody tr:hover {
                     🕘 &nbsp;Last 20 QSOs
                 </a>
                 <button type="button" class="btn btn-primary" style="background:#21262d;color:#8b949e;border:1px solid #30363d"
-                    onclick="['mode','band','date_from','date_to','wwff','pota','pga'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});var sc=document.getElementById('show_sota');if(sc)sc.checked=false;">
+                    onclick="['mode','band','date_from','date_to','wwff','pota','pga'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});var sc=document.getElementById('show_sota');if(sc)sc.checked=false;var fz=document.getElementById('fuzzy');if(fz)fz.checked=false;">
                     🧹 &nbsp;Clear form
                 </button>
+            </div>
+            <div class="form-group" style="margin-top:10px">
+                <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:normal;font-size:0.9em;cursor:pointer">
+                    <input type="checkbox" id="fuzzy" name="fuzzy" value="1"
+                        <?= $fuzzyCall ? 'checked' : '' ?> style="width:auto;accent-color:#f0a500">
+                    Include portable variants (e.g. SP5DU also finds SP5DU/P, OM/SP5DU)
+                </label>
             </div>
             <div class="search-filters">
                 <div class="filter-row cols-2">
@@ -587,14 +612,14 @@ tbody tr:hover {
                 <?php if (!empty($isLatest)): ?>
                     <h2>🕘 Last 20 QSOs (by date)</h2>
                 <?php else: ?>
-                    <h2>📋 Results for <?= htmlspecialchars($searchCall) ?></h2>
+                    <h2>📋 Results for <?= htmlspecialchars($searchCall) ?><?= !empty($fuzzyCall) ? ' (incl. portable variants)' : '' ?></h2>
                 <?php endif; ?>
 
                 <div class="table-wrapper">
                     <table>
                         <thead>
                             <tr>
-                                <?php if (!empty($isLatest)): ?>
+                                <?php if (!empty($isLatest) || !empty($fuzzyCall)): ?>
                                 <th>CALL</th>
                                 <?php endif; ?>
                                 <th>Date</th>
@@ -618,7 +643,7 @@ tbody tr:hover {
                         <tbody>
                             <?php foreach ($results as $row): ?>
                                 <tr>
-                                    <?php if (!empty($isLatest)): ?>
+                                    <?php if (!empty($isLatest) || !empty($fuzzyCall)): ?>
                                     <td><strong><?= htmlspecialchars($row['station_call'] ?? '', ENT_QUOTES, 'UTF-8') ?></strong></td>
                                     <?php endif; ?>
                                     <td>
