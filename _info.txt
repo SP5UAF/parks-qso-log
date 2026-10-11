@@ -28,3 +28,4 @@ VERSIONS/CHANGES
 00.14 20261009 Layout changes
 00.15 20261009 Layout changes
 00.16 20261011 Added logic to search for exact entered callsign or all combinations with the eneterd callsign
+00.17 20261011 Small changes

@@ -124,7 +124,7 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['search']))
         $voivSelect = $hasVoivCol ? ', my_voivodeship_ref' : '';
 
         // Exact (default): station_call = ?. Fuzzy: base call as a /-separated
-        // component: = base, base/%, %/base, %/base/% (covers SP5DU/P, OM/SP5DU/P...).
+        // component: = base, base/%, %/base, %/base/% (covers SP5UAF/P, OM/SP5UAF/P...).
         // If the entered call itself contains '/', fall back to substring LIKE.
         $where = [];
         $params = [];
@@ -516,7 +516,7 @@ tbody tr:hover {
                 <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:normal;font-size:0.9em;cursor:pointer">
                     <input type="checkbox" id="fuzzy" name="fuzzy" value="1"
                         <?= $fuzzyCall ? 'checked' : '' ?> style="width:auto;accent-color:#f0a500">
-                    Include portable variants (e.g. SP5DU also finds SP5DU/P, OM/SP5DU)
+                    Include portable variants (e.g. SP5UAF also finds SP5UAF/P, OM/SP5UAF)
                 </label>
             </div>
             <div class="search-filters">
